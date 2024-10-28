@@ -80,6 +80,7 @@ uint32_t dataRTC[20],
 int		mseg=0, //conteo de milisegundos
 	   	ms_ticks=0,
 	   	min_ticks=0,
+		ws_ticks=0,	//241025
 		MB_TOUT_ticks=0,
 		ESP_ticks=0,
 		wf_snd_flag_ticks=0,
@@ -115,6 +116,7 @@ uint8_t EN_UART1_TMR=0,
 		SYS_saveConfigData=0,
 		SYS_WIFI_UART_PASSTHROUGH=0,	//Vinvula el seria directo con el ESP8266, generando un puerto transparente
 		spi_no_debug=0,
+		exitLoop=0,
 		spi_Data[64];
 
 char	UART_RX_vect[4096],//UART_RX_vect[1024],
@@ -132,13 +134,28 @@ char	UART_RX_vect[4096],//UART_RX_vect[1024],
 		post[512],
 		body[512],
 
-    	WEB_Salida[]="<!DOCTYPE html><html><body><h2>Datos salvados</h2></body></html>\r\n",
+    	WEB_Salida[]="<!doctype html><html><body><h2>Datos salvados</h2></body></html>\r\n",
 
-		WEB_Inicio_1[]="<!DOCTYPE html><html><body><h2>SetUp RIoT device</h2><form action=\"/192.168.4.1:80\">"
+	/*	WEB_Inicio_1[]="<!doctype html><html><body><h2>SetUp RIoT device</h2><form action=\"/192.168.4.1:8080\">"
 				"<p>IP SRVR</p><input type=\"number\" id=\"A\" name=\"A\" min=\"1\" max=\"254\"><input type=\"number\" id=\"B\" name=\"B\" min=\"0\" max=\"254\"><input type=\"number\" id=\"C\" name=\"C\" min=\"0\" max=\"254\"><input type=\"number\" id=\"D\" name=\"D\" min=\"1\" max=\"254\">"
 				"<p>EP KEY</p><input type=\"number\" id=\"E\" name=\"E\" min=\"1\" max=\"4095\">"
 				"<p>ETH IP</p><input type=\"number\" id=\"F\" name=\"F\" min=\"1\" max=\"254\"><input type=\"number\" id=\"G\" name=\"G\" min=\"0\" max=\"254\"><input type=\"number\" id=\"H\" name=\"H\" min=\"0\" max=\"254\"><input type=\"number\" id=\"I\" name=\"I\" min=\"1\" max=\"254\">"
 				"<p>ETH MSK</p><input type=\"number\" id=\"J\" name=\"J\" min=\"0\" max=\"255\"><input type=\"number\" id=\"K\" name=\"K\" min=\"0\" max=\"255\"><input type=\"number\" id=\"L\" name=\"L\" min=\"0\" max=\"255\"><input type=\"number\" id=\"M\" name=\"M\" min=\"0\" max=\"255\">\r\n",
+
+
+	  WEB_Inicio_1[]="HTTP/1.1 200 OK\r\n Content-Type: text/html\r\n Connection: close\r\n\r\n <!doctype html><html><body><h2>SetUp RIoT device</h2><form action=\"/192.168.4.1:8080\">"
+				"<p>IP SRVR</p><input type=\"number\" id=\"A\" name=\"A\" min=\"1\" max=\"254\"><input type=\"number\" id=\"B\" name=\"B\" min=\"0\" max=\"254\"><input type=\"number\" id=\"C\" name=\"C\" min=\"0\" max=\"254\"><input type=\"number\" id=\"D\" name=\"D\" min=\"1\" max=\"254\">"
+				"<p>EP KEY</p><input type=\"number\" id=\"E\" name=\"E\" min=\"1\" max=\"4095\">"
+				"<p>ETH IP</p><input type=\"number\" id=\"F\" name=\"F\" min=\"1\" max=\"254\"><input type=\"number\" id=\"G\" name=\"G\" min=\"0\" max=\"254\"><input type=\"number\" id=\"H\" name=\"H\" min=\"0\" max=\"254\"><input type=\"number\" id=\"I\" name=\"I\" min=\"1\" max=\"254\">"
+				"<p>ETH MSK</p><input type=\"number\" id=\"J\" name=\"J\" min=\"0\" max=\"255\"><input type=\"number\" id=\"K\" name=\"K\" min=\"0\" max=\"255\"><input type=\"number\" id=\"L\" name=\"L\" min=\"0\" max=\"255\"><input type=\"number\" id=\"M\" name=\"M\" min=\"0\" max=\"255\">"
+				"<input type=\"submit\" value=\"Salvar\"></form></body></html>\r\n",*/
+
+    WEB_Inicio_1[]="HTTP/1.1 200 OK\r\n Content-Type: text/html\r\n Connection: close\r\n\r\n <!doctype html><html><body><h2>SetUp RIoT device</h2><form action=\"/192.168.4.1:8080\">"
+				"<p>IP SRVR</p><input type=\"number\" id=\"A\" name=\"A\" min=\"1\" max=\"254\"><input type=\"number\" id=\"B\" name=\"B\" min=\"0\" max=\"254\"><input type=\"number\" id=\"C\" name=\"C\" min=\"0\" max=\"254\"><input type=\"number\" id=\"D\" name=\"D\" min=\"1\" max=\"254\">"
+				"<p>EP KEY</p><input type=\"number\" id=\"E\" name=\"E\" min=\"1\" max=\"4095\">"
+				"<p>ETH IP</p><input type=\"number\" id=\"F\" name=\"F\" min=\"1\" max=\"254\"><input type=\"number\" id=\"G\" name=\"G\" min=\"0\" max=\"254\"><input type=\"number\" id=\"H\" name=\"H\" min=\"0\" max=\"254\"><input type=\"number\" id=\"I\" name=\"I\" min=\"1\" max=\"254\">"
+				"<p>ETH MSK</p><input type=\"number\" id=\"J\" name=\"J\" min=\"0\" max=\"255\"><input type=\"number\" id=\"K\" name=\"K\" min=\"0\" max=\"255\"><input type=\"number\" id=\"L\" name=\"L\" min=\"0\" max=\"255\"><input type=\"number\" id=\"M\" name=\"M\" min=\"0\" max=\"255\">\r\n",
+
 
 		WEB_Inicio_2[]="<p>ETH TRGT IP</p><input type=\"number\" id=\"J2\" name=\"J2\" min=\"1\" max=\"254\"><input type=\"number\" id=\"K2\" name=\"K2\" min=\"0\" max=\"254\"><input type=\"number\" id=\"L2\" name=\"L2\" min=\"0\" max=\"255\"><input type=\"number\" id=\"M2\" name=\"M2\" min=\"1\" max=\"254\">"
 				"<p>ETH PRT</p><input type=\"number\" id=\"N\" name=\"N\" min=\"1\" max=\"65535\">"
@@ -157,7 +174,12 @@ char	UART_RX_vect[4096],//UART_RX_vect[1024],
 				"<p>LoRa NID</p><input type=\"number\" id=\"0\" name=\"0\" min=\"0\" max=\"16\">"
 				"<p>LoRa NCP</p><input type=\"number\" id=\"1\" name=\"1\" min=\"0\" max=\"16\">"
 				"<p>LoRa BND</p><input type=\"number\" id=\"2\" name=\"2\" min=\"0\" max=\"55\">"
-				"<input type=\"submit\" value=\"Salvar\"></form></body></html>\r\n";
+				"<input type=\"submit\" value=\"Salvar\"></form></body></html>\r\n",
+
+		WEB_favicon[]="HTTP/1.1 404 Not Found\r\n"	//24
+					  "Content-Type: text/html\r\n"	//25
+					  "Content-length: 57\r\n\r\n"  //22
+					  "<html><head><title>Not Found</title></head></body></html>"; //57  TOTAL 128
 
 		// 854 + 933 + 859
 
@@ -217,6 +239,8 @@ int main(void)
 		 * UID[1]=Nro de Lote
 		 * Por probabilidad vamos a tomar como UID a visualizar como AP los primeros 32 bits
 		 */
+			wf._DBG_EN=1;		//NO TRAJE EL CABLE LO HAGO POR ITM
+
 			UID[0] = *(__IO uint32_t *)(UID_BASE_ADDRESS);
 			UID[1] = *(__IO uint32_t *)(UID_BASE_ADDRESS + 4U);
 			UID[2] = *(__IO uint32_t *)(UID_BASE_ADDRESS + 8U);
@@ -377,8 +401,8 @@ int main(void)
 	  {
 		  if(FLAG_UART1_WF==1)
 		  {
-			dummy2=strlen(":GET /192.168.4.1:80?A=");
-			if(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,":GET /192.168.4.1:80?A=",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)==1)
+			dummy2=strlen(":GET /192.168.4.1:8080?A=");
+			if(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,":GET /192.168.4.1:8080?A=",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)==1)
 				{
 					BKP_AP_EXTRACT(&NVS,UART_RX_vect_hld,UART_RX_items);	//Gurado los datos ingresado por la web a la estrucutra NVS
 					ITM0_Write("\r\n SYS-Escritura de valores en registros de back up",strlen("\r\n SYS-Escritura de valores en registros de back up"));
@@ -399,29 +423,69 @@ int main(void)
 					FLAG_UART1_WF=0;
 				}
 				else{
-					  dummy2=strlen("+IPD,0,");
-					  if(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,"+IPD,0,",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)==1)
+					  //dummy2=strlen("+IPD,0,");
+					  //if(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,"+IPD,0,",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)==1)
+					  dummy2=strlen(":GET / HTTP/");
+				      if(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,":GET / HTTP/",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)==1)
 					  {
 						  //------------------------ PAGINA WEB ------------------------ //
-						  HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,856\r\n", strlen("AT+CIPSEND=0,856\r\n"), 100);
-						  HAL_Delay(300);
+						  //HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,917\r\n", strlen("AT+CIPSEND=0,917\r\n"), 100);
+				    	  /*HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,981\r\n", strlen("AT+CIPSEND=0,981\r\n"), 100);
+						  HAL_Delay(100);
 						  HAL_UART_Transmit(&huart1, WEB_Inicio_1, strlen(WEB_Inicio_1), 100);
-						  HAL_Delay(300);
+						  dummy2=strlen("SEND OK");
+						  while(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,"SEND OK",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)!=1)
+						  {}
+						  */
+						  HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,923\r\n", strlen("AT+CIPSEND=0,923\r\n"), 100);
+						  HAL_Delay(100);
+						  UART_RX_items=1;
+						  HAL_UART_Transmit(&huart1, WEB_Inicio_1, strlen(WEB_Inicio_1), 100);
+						  	  	  //Waiting for ESP8266 data sent
+								  dummy2=strlen("SEND OK");
+								  while(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,"SEND OK",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)!=1)
+								  {}
 						  HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,935\r\n", strlen("AT+CIPSEND=0,935\r\n"), 100);
-						  HAL_Delay(300);
+						  HAL_Delay(100);
+						  UART_RX_items=1;
 						  HAL_UART_Transmit(&huart1, WEB_Inicio_2, strlen(WEB_Inicio_2), 100);
-						  HAL_Delay(300);
+						  	  	  //Waiting for ESP8266 data sent
+								  dummy2=strlen("SEND OK");
+								  while(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,"SEND OK",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)!=1)
+								  {}
 						  HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,861\r\n", strlen("AT+CIPSEND=0,861\r\n"), 100);
-						  HAL_Delay(300);
+						  HAL_Delay(100);
+						  UART_RX_items=1;
 						  HAL_UART_Transmit(&huart1, WEB_Inicio_3, strlen(WEB_Inicio_3), 100);
-						  HAL_Delay(300);
+						  	  	  //Waiting for ESP8266 data sent
+								  dummy2=strlen("SEND OK");
+								  while(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,"SEND OK",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)!=1)
+								  {}
 						  HAL_UART_Transmit(&huart1, "AT+CIPCLOSE=0\r\n", strlen("AT+CIPCLOSE=0\r\n"), 100);
-						  HAL_Delay(10);
+						  HAL_Delay(100);
+
 						  //------------------------ PAGINA WEB ------------------------ //
+
 						  FLAG_UART1_WF=0;
 						  }else
 							  {
-							  FLAG_UART1_WF=0;
+							 dummy2=strlen("favicon.ico");
+						      if(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,"favicon.ico",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)==1)
+								  {
+									  HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,128\r\n", strlen("AT+CIPSEND=0,128\r\n"), 100);
+									  HAL_Delay(100);
+									  HAL_UART_Transmit(&huart1, WEB_favicon, strlen(WEB_favicon), 100);
+											  dummy2=strlen("SEND OK");
+											  while(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,"SEND OK",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)!=1)
+											  {}
+									  HAL_UART_Transmit(&huart1, "AT+CIPCLOSE=0\r\n", strlen("AT+CIPCLOSE=0\r\n"), 100);
+									  HAL_Delay(100);
+									  FLAG_UART1_WF=0;
+								  }
+								  else{
+									  	  FLAG_UART1_WF=0;
+								  }
+						      FLAG_UART1_WF=0;
 							  }
 					}
 		  }
@@ -466,7 +530,7 @@ int main(void)
 	wf._estado_conexion=100;//Si no se define no arranca	//wf._estado_conexion=1;					//Arranco en WiFi Desconectado
 	wf._automatizacion=WF_CONNECT_TCP;//wf._automatizacion=WF_SEND;//
 	wf._NO_IP=1;
-	wf._DBG_EN=1;
+	//wf._DBG_EN=1;
 
 
   if(ESP8266_HW_Init(&huart1)==1)
@@ -1176,6 +1240,8 @@ void SysTick_Handler(void)
    mseg++;
    ms_ticks++;
    ESP_ticks++;
+   if(SYS_saveConfigData==1) ws_ticks++;
+   if(ws_ticks>=2000000) ws_ticks==2000000;
 
 	if (mseg==500)
 		{
