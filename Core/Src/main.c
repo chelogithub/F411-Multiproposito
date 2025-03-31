@@ -153,22 +153,26 @@ char	UART_RX_vect[4096],//UART_RX_vect[1024],
     WEB_Inicio_1[]="HTTP/1.1 200 OK\r\n Content-Type: text/html\r\n Connection: close\r\n\r\n <!doctype html><html><body><h2>SetUp RIoT device</h2><form action=\"/192.168.4.1:8080\">"
 				"<p>IP SRVR</p><input type=\"number\" id=\"A\" name=\"A\" min=\"1\" max=\"254\"><input type=\"number\" id=\"B\" name=\"B\" min=\"0\" max=\"254\"><input type=\"number\" id=\"C\" name=\"C\" min=\"0\" max=\"254\"><input type=\"number\" id=\"D\" name=\"D\" min=\"1\" max=\"254\">"
 				"<p>EP KEY</p><input type=\"number\" id=\"E\" name=\"E\" min=\"1\" max=\"4095\">"
+    			"<h2>Ethernet</h2>"
 				"<p>ETH IP</p><input type=\"number\" id=\"F\" name=\"F\" min=\"1\" max=\"254\"><input type=\"number\" id=\"G\" name=\"G\" min=\"0\" max=\"254\"><input type=\"number\" id=\"H\" name=\"H\" min=\"0\" max=\"254\"><input type=\"number\" id=\"I\" name=\"I\" min=\"1\" max=\"254\">"
 				"<p>ETH MSK</p><input type=\"number\" id=\"J\" name=\"J\" min=\"0\" max=\"255\"><input type=\"number\" id=\"K\" name=\"K\" min=\"0\" max=\"255\"><input type=\"number\" id=\"L\" name=\"L\" min=\"0\" max=\"255\"><input type=\"number\" id=\"M\" name=\"M\" min=\"0\" max=\"255\">\r\n",
 
 
 		WEB_Inicio_2[]="<p>ETH TRGT IP</p><input type=\"number\" id=\"J2\" name=\"J2\" min=\"1\" max=\"254\"><input type=\"number\" id=\"K2\" name=\"K2\" min=\"0\" max=\"254\"><input type=\"number\" id=\"L2\" name=\"L2\" min=\"0\" max=\"255\"><input type=\"number\" id=\"M2\" name=\"M2\" min=\"1\" max=\"254\">"
 				"<p>ETH PRT</p><input type=\"number\" id=\"N\" name=\"N\" min=\"1\" max=\"65535\">"
+				"<h2>Wi-Fi</h2>"
 				"<p>WF SSID</p><input type=\"text\" id=\"O\" name=\"O\" maxlength=\"28\" size=\"28\">"
 				"<p>WF PSS</p><input type=\"password\" id=\"P\" name=\"P\" maxlength=\"12\" size=\"12\">"
 				"<p>WF IP</p><input type=\"number\" id=\"Q\" name=\"Q\" min=\"1\" max=\"254\"><input type=\"number\" id=\"R\" name=\"R\" min=\"0\" max=\"255\"><input type=\"number\" id=\"S\" name=\"S\" min=\"0\" max=\"255\"><input type=\"number\" id=\"T\" name=\"T\" min=\"0\" max=\"254\">"
 				"<p>WF MSK</p><input type=\"number\" id=\"U\" name=\"U\" min=\"1\" max=\"255\"><input type=\"number\" id=\"V\" name=\"V\" min=\"0\" max=\"255\"><input type=\"number\" id=\"W\" name=\"W\" min=\"0\" max=\"255\"><input type=\"number\" id=\"X\" name=\"X\" min=\"0\" max=\"255\">\r\n",
 
 		WEB_Inicio_3[]="<p>WF PORT</p><input type=\"number\" id=\"Y\" name=\"Y\" min=\"1\" max=\"65535\">"
+				"<h2>ModBUS</h2>"
 				"<p>MBUS REG START</p><input type=\"number\" id=\"MRS\" name=\"MRS\" min=\"0\" max=\"255\" step=\"1\" value=\"\">"
 				"<p>MBUS ID Local</p><input type=\"number\" id=\"IL\" name=\"IL\" min=\"0\" max=\"255\" step=\"1\" value=\"\">"
 				"<p>MBUS Code</p><input type=\"number\" id=\"MC\" name=\"MC\" min=\"3\" max=\"4\" step=\"1\" value=\"\">"
 				"<p>MBUS ID SERVER</p><input type=\"number\" id=\"MIS\" name=\"MIS\" min=\"0\" max=\"255\" step=\"1\" value=\"\">"
+				"<h2>Lo-Ra</h2>"
 				"<p>LoRa SRVR</p><input type=\"number\" id=\"Z\" name=\"Z\" min=\"1\" max=\"254\">"
 				"<p>LoRa ADDR</p><input type=\"number\" id=\"Z2\" name=\"Z2\" min=\"1\" max=\"254\">"
 				"<p>LoRa NID</p><input type=\"number\" id=\"0\" name=\"0\" min=\"0\" max=\"16\">"
@@ -266,11 +270,11 @@ int main(void)
 
 		//----------------------0 ModBUS -----------------------//
 		//-----------------------1 ETHERNET W5100 Environment-------------------------//
-
+		// HARDCODED CONFIG, NOT IMPLEMENTED YET
 		//	GATEWAY ADDRESS
 			ETH.GAR[0]=192;
 			ETH.GAR[1]=168;
-			ETH.GAR[2]=0;
+			ETH.GAR[2]=0;//1;
 			ETH.GAR[3]=1;
 		//	SUBNET MASK
 			ETH.SUBR[0]=255;
@@ -287,8 +291,8 @@ int main(void)
 		//	IP ADDRESS
 			ETH.SIPR[0]=192;
 			ETH.SIPR[1]=168;
-			ETH.SIPR[2]=0;
-			ETH.SIPR[3]=34;//ETH.SIPR[3]=6,
+			ETH.SIPR[2]=0;//1;
+			ETH.SIPR[3]=18;//34;//ETH.SIPR[3]=6,
 		//  Socket RX memory
 			ETH.RMSR=0x55;
 		//  Socket TX memory
@@ -299,8 +303,8 @@ int main(void)
 		//	S0 Client IP ADDRESS
 			ETH.S0_DIPR[0]=192;
 			ETH.S0_DIPR[1]=168;
-			ETH.S0_DIPR[2]=0;
-			ETH.S0_DIPR[3]=3;//=3;
+			ETH.S0_DIPR[2]=0;//0;
+			ETH.S0_DIPR[3]=24;//3;//=3;
 		//	S0 Client IP ADDRESS
 			ETH.S0_DPORT[0]=0x01;
 			ETH.S0_DPORT[1]=0xF6;
@@ -437,7 +441,7 @@ int main(void)
 						  while(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,"SEND OK",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)!=1)
 						  {}
 						  */
-						  HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,923\r\n", strlen("AT+CIPSEND=0,923\r\n"), 100);
+						  HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,940\r\n", strlen("AT+CIPSEND=0,923\r\n"), 100);
 						  HAL_Delay(100);
 						  UART_RX_items=1;
 						  HAL_UART_Transmit(&huart1, WEB_Inicio_1, strlen(WEB_Inicio_1), 100);
@@ -445,7 +449,7 @@ int main(void)
 								  dummy2=strlen("SEND OK");
 								  while(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,"SEND OK",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)!=1)
 								  {}
-						  HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,935\r\n", strlen("AT+CIPSEND=0,935\r\n"), 100);
+						  HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,949\r\n", strlen("AT+CIPSEND=0,935\r\n"), 100);
 						  HAL_Delay(100);
 						  UART_RX_items=1;
 						  HAL_UART_Transmit(&huart1, WEB_Inicio_2, strlen(WEB_Inicio_2), 100);
@@ -453,7 +457,7 @@ int main(void)
 								  dummy2=strlen("SEND OK");
 								  while(FT_String_ND(UART_RX_vect_hld,&UART_RX_items,"SEND OK",&dummy2,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)!=1)
 								  {}
-						  HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,861\r\n", strlen("AT+CIPSEND=0,861\r\n"), 100);
+						  HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,889\r\n", strlen("AT+CIPSEND=0,861\r\n"), 100);
 						  HAL_Delay(100);
 						  UART_RX_items=1;
 						  HAL_UART_Transmit(&huart1, WEB_Inicio_3, strlen(WEB_Inicio_3), 100);
@@ -518,8 +522,8 @@ int main(void)
   	Inicializar(&wf); 									//Borra todos los registros de la estructura
   	wf.RESET_PORT=GPIOA;
   	wf.RESET_PIN=WF_EN_RST_Pin;
-	strcpy(wf._WF_Net, NVS._WIFI_SSID);						//Nombre de la red WIFI  a conectar Fibertel WiFi967 2.4GHz
-	strcpy(wf._WF_Pass, NVS._WIFI_PASS);						//Password de la red WIFI
+	strcpy(wf._WF_Net, NVS._WIFI_SSID);					//Nombre de la red WIFI  a conectar Fibertel WiFi967 2.4GHz
+	strcpy(wf._WF_Pass, NVS._WIFI_PASS);				//Password de la red WIFI
 	strcpy(wf._TCP_Remote_Server_IP, NVS._SERVER);		//char _TCP_Remote_Server_IP[16];		//IP del Servidor TCP
 	strcpy(wf._TCP_Remote_Server_Port, NVS._WIFI_PORT);		//char _TCP_Remote_Server_Port[16];			//Puerto del Servidor TCP
 	/*strcpy(wf._TCP_Local_Server_IP, TCP_SERVER_LOCAL);
@@ -1261,7 +1265,7 @@ void SysTick_Handler(void)
 
 		if((wf._estado_conexion==609 || wf._estado_conexion==700)&&(wf._TCP_Local_Server_EN==0))  wf_snd_flag_ticks++;
 
-		if(wf_snd_flag_ticks>=4000 && wf._ejecucion!=1 && wf._TCP_Local_Server_EN==0)
+		if(wf_snd_flag_ticks>=2000 && wf._ejecucion!=1 && wf._TCP_Local_Server_EN==0) //wf_snd_flag_ticks>=4000
 			{
 			WF_SND_FLAG=1;		//Envío de datos cada 20 segs
 			}
@@ -1277,7 +1281,7 @@ void SysTick_Handler(void)
 		}
 
 	/**********************[ FIN 	- EHTERNET WDG ] **********************/
-   if (ms_ticks==300)
+   if (ms_ticks==100) //ms_ticks==300
      {
    	ms_ticks=0;
    	min_ticks++;
