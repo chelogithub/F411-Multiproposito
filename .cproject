@@ -195,4 +195,5 @@
 			<resource resourceType="PROJECT" workspacePath="/F411-Multiproposito"/>
 		</configuration>
 	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 </cproject>

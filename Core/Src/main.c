@@ -47,6 +47,7 @@
 /* USER CODE BEGIN PM */
 #define ITM_Port32(n)   (*((volatile unsigned long *)(0xE0000000+4*n)))
 #define UID_BASE_ADDRESS 0x1FFF7A10U
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -96,7 +97,8 @@ uint16_t 	S0_get_size = 0,
 			rx_mem_pointer=0,
 			send_size=0;
 
-uint8_t EN_UART1_TMR=0,
+uint8_t CAM_W5100=0,
+		EN_UART1_TMR=0,
 		EN_UART2_TMR=0,
 		EN_UART6_TMR=0,
 		ESP_conn=0,
@@ -110,11 +112,18 @@ uint8_t EN_UART1_TMR=0,
 		FLAG_UART6=0,
 		SYS_WEB_SERVER=0,
 		SYS_WF_DEBUG_EN=1,
-		SYS_DEBUG_EN=1,					//Muestra eventos de sistema  por ITM
+		SYS_STARTUP_DEBUG_EN=1,
+
+		SYS_UART_MBUS_DEBUG= 0 ,					//Muestra eventos de sistema  por PORT 6
+		SYS_UART_MBUS_DEBUG_BUSY=0,
+		SYS_UART_DEBUG= 0 ,					//Muestra eventos de sistema  por PORT 6
+		SYS_UART_DEBUG_BUSY=0,
+
 		SYS_SPI_ETH_READ_EN=0,
-		SYS_ETH_DBG_EN=0,
+		SYS_ETH_DBG_EN=1,
 		SYS_saveConfigData=0,
-		SYS_WIFI_UART_PASSTHROUGH=0,	//Vinvula el seria directo con el ESP8266, generando un puerto transparente
+		TXSPI[4],
+		RXSPI[4],
 		spi_no_debug=0,
 		exitLoop=0,
 		spi_Data[64];
@@ -202,6 +211,17 @@ enum {
 	TEPELCO,
 	TEST_1,
 	TEST_2
+};
+enum DEBUG_MODE{
+
+	WIFI,
+	SERIAL,
+	ETHERNET
+};
+enum DEBUG_BUSY{
+
+	YES,
+	NO
 };
 
 /* USER CODE END PV */
@@ -375,6 +395,7 @@ int main(void)
     HAL_GPIO_WritePin(GPIOA, MBUS_CTRL_Pin, GPIO_PIN_RESET);	//Habilito 485 para RX
     HAL_GPIO_WritePin(GPIOA, WF_EN_RST_Pin, GPIO_PIN_SET);	//Habilito WiFi
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, SET);				//Habilito ETHERNET
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, SET);				//Habilito ETHERNET NSS
 
   //------------------0 Habilitacion de dispositivos ---------------//
   //------------------1 Se visualiza SSID y AP ---------------//
@@ -385,7 +406,8 @@ int main(void)
 	ITM0_Write( "\r\n\r\n\r\n SYS-AP-PASS : ", strlen("\r\n\r\n\r\n SYS-AP-PASS : "));
 	ITM0_Write( wf._WF_AP_Pass, strlen(wf._WF_AP_Pass));
 	ITM0_Write("\r\n\r\n\r\n SYS-ARRANQUE",strlen("\r\n\r\n\r\n SYS-ARRANQUE"));
-	if(SYS_DEBUG_EN==1)
+	SYS_UART_DEBUG=WIFI;
+	if(SYS_STARTUP_DEBUG_EN==1)
 		{
 			HAL_UART_Transmit(&huart6, "\r\n\r\n\r\n SYS-AP-SSID :", strlen("\r\n\r\n\r\n SYS-AP-SSID :"), 100);
 			HAL_UART_Transmit(&huart6, wf._WF_AP_SSID, strlen(wf._WF_AP_SSID), 100);
@@ -410,10 +432,10 @@ int main(void)
 				{
 					BKP_AP_EXTRACT(&NVS,UART_RX_vect_hld,UART_RX_items);	//Gurado los datos ingresado por la web a la estrucutra NVS
 					ITM0_Write("\r\n SYS-Escritura de valores en registros de back up",strlen("\r\n SYS-Escritura de valores en registros de back up"));
-					if(SYS_DEBUG_EN==1) HAL_UART_Transmit(&huart6, "\r\n SYS-Escritura de valores en registros de back up", strlen("\r\n SYS-Escritura de valores en registros de back up"), 100);
+					if(SYS_STARTUP_DEBUG_EN==1) HAL_UART_Transmit(&huart6, "\r\n SYS-Escritura de valores en registros de back up", strlen("\r\n SYS-Escritura de valores en registros de back up"), 100);
 					BKP_REG_RW(&hrtc, WRITE, &NVS);							//Salvo los datos de la estrucutra NVS en los registros de BackUp
-					BKP_REG_SHW(&NVS,&huart6,SYS_DEBUG_EN);					//Muestro los datos leídos de la estructura
-					if(SYS_DEBUG_EN==1)
+					BKP_REG_SHW(&NVS,&huart6,SYS_STARTUP_DEBUG_EN);					//Muestro los datos leídos de la estructura
+					if(SYS_STARTUP_DEBUG_EN==1)
 						{
 						HAL_UART_Transmit(&huart6, "\r\n SYS-Datos recibidos de AP", strlen("\r\n SYS-Datos recibidos de AP"), 100);
 					    HAL_UART_Transmit(&huart1, "AT+CIPSEND=0,66\r\n", strlen("AT+CIPSEND=0,66\r\n"), 100);
@@ -497,9 +519,9 @@ int main(void)
   }
   else{
 		  ITM0_Write("\r\n SYS-Lectura de valores en registros de back up",strlen("\r\n SYS-Lectura de valores en registros de back up"));
-		  if(SYS_DEBUG_EN==1) HAL_UART_Transmit(&huart6, "\r\n SYS-Lectura de valores en registros de back up", strlen("\r\n SYS-Lectura de valores en registros de back up"), 100);
+		  if(SYS_STARTUP_DEBUG_EN==1) HAL_UART_Transmit(&huart6, "\r\n SYS-Lectura de valores en registros de back up", strlen("\r\n SYS-Lectura de valores en registros de back up"), 100);
 		  BKP_REG_RW(&hrtc, READ, &NVS);
-		  BKP_REG_SHW(&NVS,&huart6,SYS_DEBUG_EN);
+		  BKP_REG_SHW(&NVS,&huart6,SYS_STARTUP_DEBUG_EN);
   	  }
   //------------------0 Revisión de datos guardados en memoria ---------------//
 
@@ -508,11 +530,20 @@ int main(void)
   HAL_UART_Receive_IT(&huart2,(uint8_t *)UART2_RX_byte,1);
   HAL_UART_Receive_IT(&huart6,(uint8_t *)UART6_RX_byte,1);
   ITM0_Write("\r\nPuerto serie en escucha",strlen("\r\nPuerto serie en escucha"));
-  if(SYS_DEBUG_EN==1) HAL_UART_Transmit(&huart6, "\r\nPuerto serie en escucha", strlen("\r\nPuerto serie en escucha"), 100);
+  if(SYS_STARTUP_DEBUG_EN==1) HAL_UART_Transmit(&huart6, "\r\nPuerto serie en escucha", strlen("\r\nPuerto serie en escucha"), 100);
   //------------------0 Inicializacion UART ---------------//
 
   //------------------1 Inicializacion ETHERNET ---------------//
   if(SYS_ETH_DBG_EN==1) ITM0_Write("\r\n SET-UP W5100 \r\n",strlen("\r\n SET-UP W5100 \r\n"));
+
+  //------------------------------------------------------------------------------------
+	TXSPI[0]=240;
+	TXSPI[1]=0;
+	TXSPI[2]=1;
+	TXSPI[3]=192;
+
+  //------------------------------------------------------------------------------------
+
   eth_init(&ETH);
   eth_socket_init(&ETH,0);
   SYS_SPI_ETH_READ_EN=1;
@@ -526,15 +557,11 @@ int main(void)
 	strcpy(wf._WF_Pass, NVS._WIFI_PASS);				//Password de la red WIFI
 	strcpy(wf._TCP_Remote_Server_IP, NVS._SERVER);		//char _TCP_Remote_Server_IP[16];		//IP del Servidor TCP
 	strcpy(wf._TCP_Remote_Server_Port, NVS._WIFI_PORT);		//char _TCP_Remote_Server_Port[16];			//Puerto del Servidor TCP
-	/*strcpy(wf._TCP_Local_Server_IP, TCP_SERVER_LOCAL);
-	strcpy(wf._TCP_Local_Server_GWY, TCP_SERVER_LOCAL_GWY);
-	strcpy(wf._TCP_Local_Server_MSK, TCP_SERVER_LOCAL_MSK);
-	strcpy(wf._TCP_Local_Server_Port, TCP_PORT_LOCAL);*/
 	wf._TCP_Local_Server_EN=0;							//Habilito el Servidor Local
 	wf._estado_conexion=100;//Si no se define no arranca	//wf._estado_conexion=1;					//Arranco en WiFi Desconectado
 	wf._automatizacion=WF_CONNECT_TCP;//wf._automatizacion=WF_SEND;//
 	wf._NO_IP=1;
-	//wf._DBG_EN=1;
+	wf._DBG_EN=1;
 
 
   if(ESP8266_HW_Init(&huart1)==1)
@@ -563,7 +590,12 @@ int main(void)
 
   HAL_Delay(1000);
   //------------------0 Inicializacion WIFI ---------------//
-
+  //------------------0 Initial state digital error flags ---------------//
+  HAL_GPIO_WritePin(GPIOB, ALIM_Pin,SET);
+  HAL_GPIO_WritePin(GPIOB, CNN_Pin,SET);
+  HAL_GPIO_WritePin(GPIOB, FALLA_Pin,SET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0,SET);
+  //------------------1 Initial state digital error flags ---------------//
 
   /* USER CODE END 2 */
 
@@ -574,7 +606,272 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	 if(CAM_W5100)
+	 {
+		 if(spi_no_debug)
+		    	  {
+		    	  if(SYS_SPI_ETH_READ_EN==1)
+		    	  {
+		    		 HAL_GPIO_TogglePin(GPIOA, DBG_PIN_Pin);
+		    	     ETH.S0_status=eth_rd_SOCKET_STAT(&ETH,0);
 
+		    		  switch(ETH.S0_status)	//Check Socket status
+		    	     {
+		    			 case SOCK_CLOSED :
+		    				 {
+		    					 //if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_CLOSED \r\n",strlen("\r\nS0_SOCK_CLOSED \r\n"));}
+		    					 eth_wr_SOCKET_CMD(&ETH, 0 ,OPEN );
+		    					 // Si no tengo intento de ARP por 5 segundos vuelvo a inicializar
+		    					 if(ETH.ETH_WDG>=5000)
+		    					 {
+		    						 ETH.ETH_WDG=0;
+		    						 //Added to avoid TCP HANG TESTING //Cuando entaba al rebooting se quedaba colgado ahí.Se cierra el puerto y no lo puede volver a abirir.
+		    						 // El error aparentemente viene desde el open PLC dado que el ModBUS Poll tb entrega errores de read, timeout, write y transaction
+		    						 ITM0_Write("\r\nREBOOTING \r\n",strlen("\r\nREBOOTING \r\n"));
+		    						 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, RESET);
+		    						 HAL_Delay(250);
+		    						 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, SET);
+		    						 HAL_Delay(100);
+		    						 ITM0_Write("\r\nGOING TO INIT \r\n",strlen("\r\nGOING TO INIT \r\n"));
+		    						 //
+
+
+		    						 eth_init(&ETH);
+		    						 eth_socket_init(&ETH,0);
+		    					 }
+
+		    				 }
+		    			 break;
+		    			 case  SOCK_INIT :
+		    				 {
+		    					 if(ETH.S0_ENserver == 1)
+		    					 {
+		    						 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_INIT \r\n",strlen("\r\nS0_SOCK_INIT \r\n"));}
+		    							eth_wr_SOCKET_CMD(&ETH, 0, LISTEN );
+		    							ETH.ETH_WDG=0;
+		    					 }
+		    					 else
+		    					 {
+		    						 	eth_wr_SOCKET_CMD(&ETH,0, CONNECT);																				//only for server
+		    						 	if (SYS_ETH_DBG_EN == 1)
+		    						 	{
+		    						 		ITM0_Write("\r\nETH-W5100-CONNECT\r\n",strlen("\r\nETH-W5100-CONNECT\r\n"));
+		    						 	}
+		    						 	ETH.ETH_WDG=0;
+		    					 }
+
+		    				 }
+		    			 break;
+		    			 case SOCK_LISTEN :
+		    				 {
+		    					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_LISTEN \r\n",strlen("\r\nS0_SOCK_LISTEN \r\n"));}
+		    					 ETH.ETH_WDG=0;
+		    				 }
+		    			 break;
+		    			 case SOCK_SYNSENT :
+		    				 {
+		    					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_SYNSENT \r\n",strlen("\r\nS0_SOCK_SYNSENT \r\n"));}
+		    					 ETH.ETH_WDG=0;
+		    				 }
+		    			 break;
+		    			 case SOCK_SYNRECV :
+		    				 {
+		    					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_SYNRECV \r\n",strlen("\r\nS0_SOCK_SYNRECV \r\n"));}
+		    					 ETH.ETH_WDG=0;
+		    				 }
+		    			 break;
+		    			 case SOCK_ESTABLISHED :
+		    				 {
+		    					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_ESTABLISHED \r\n",strlen("\r\nS0_SOCK_ESTABLISHED \r\n"));}
+		    					 ETH.ETH_WDG=0;
+
+		    					if (ETH.S0_ENserver == 1)  // Si el puerto Ethernet actúa como server (Recibe datos conexión mas pedido mbus
+		    					{
+
+		    							S0_get_size = SPI_ETH_REG(&ETH, S0_RX_SZ_ADDR_BASEHH,S0_RX_SZ_ADDR_BASEHL ,SPI_READ, spi_Data,2);
+		    							if(S0_get_size != 0x00)
+		    							{
+		    								eth_rd_SOCKET_DATA(&ETH,0,&rx_mem_pointer,S0_get_size); // read socket data
+		    								SPI_ETH_WR_REG_16(&ETH,S0_RX_RD0,rx_mem_pointer );		// write rx memory pointer
+		    								eth_wr_SOCKET_CMD(&ETH,0,RECV);							// write command to execute
+		    								while(eth_rd_SOCKET_CMD(&ETH,0))						// wait until end of command execution
+		    								{}
+
+		    								CopiaVector(mb_eth._MBUS_RCVD, ETH.data, S0_get_size, 0, 0 );
+		    								mb_eth._n_MBUS_RCVD=S0_get_size;
+
+		    								if(S0_get_size > 0)	{ ETH.S0_data_available=1;}					//Flag data received
+
+		    								if(ModBUS_Check(mb_eth._MBUS_RCVD, mb_eth._n_MBUS_RCVD))		//Ckecks ModBUS type data
+		    								{
+		    									ModBUS(&mb_eth);										//ModBUS protocol execution
+		    									CopiaVector(ETH.data, mb_eth._MBUS_2SND, mb_eth._n_MBUS_2SND, 0, 0);
+		    								}
+		    								else
+		    								{
+		    									if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\n NO MBUS \r\n",strlen("\r\n\r\n NO MBUS \r\n\r\n"));}
+		    								}
+
+		    								send_size=mb_eth._n_MBUS_2SND;  //ModBUS data qty
+
+		    								eth_wr_SOCKET_DATA(&ETH,0, &tx_mem_pointer, send_size);	// write socket data
+		    								SPI_ETH_WR_REG_16(&ETH,0x424,tx_mem_pointer);			// write tx memory pointer
+		    								eth_wr_SOCKET_CMD(&ETH,0,SEND);							// write command to execute
+		    								while(eth_rd_SOCKET_CMD(&ETH,0))						// wait until end of command execution
+		    								{}
+
+		    							}
+		    					}
+		    					else	// Puerto ethernet labura como esclavo, se conecta al server para pedir datos
+		    					{
+
+		    						if (mb_eth._w_answer==0)
+		    						{
+		    							//Si ya envié vuelvo a enviar
+
+		    							ETH.data[0]=0x00;
+		    							ETH.data[1]=0x00;
+		    							ETH.data[2]=0x00;
+		    							ETH.data[3]=0x00;
+		    							ETH.data[4]=0x00;
+		    							ETH.data[5]=0x06;
+		    							ETH.data[6]=0x01;
+		    							ETH.data[7]=0x03;
+		    							ETH.data[8]=0x00;
+		    							ETH.data[9]=0x00;
+		    							ETH.data[10]=0x00;
+		    							ETH.data[11]=0x0A;
+		    							send_size=12;
+
+		    							ModBUS_F03_Request(&mb_eth,0,15);
+		    							CopiaVector(ETH.data, mb_eth._MBUS_2SND, 12, 0, 0 );
+
+		    							eth_wr_SOCKET_DATA(&ETH,0, &tx_mem_pointer, send_size);	// write socket data
+		    							SPI_ETH_WR_REG_16(&ETH,0x424,tx_mem_pointer);			// write tx memory pointer
+		    							eth_wr_SOCKET_CMD(&ETH,0,SEND);							// write command to execute
+		    							while(eth_rd_SOCKET_CMD(&ETH,0))						// wait until end of command execution
+		    							{}
+		    							mb_eth._w_answer=1;	// Waiting answer flag
+		    							MB_TOUT_ticks=0;	// restart counting
+		    							if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\n SENT MBUS REQ \r\n",strlen("\r\n\r\n SENT MBUS REQ \r\n\r\n"));}
+		    						}
+		    						else
+		    						{
+		    						S0_get_size = SPI_ETH_REG(&ETH, S0_RX_SZ_ADDR_BASEHH,S0_RX_SZ_ADDR_BASEHL ,SPI_READ, spi_Data,2);
+		    							if(S0_get_size != 0x00)
+		    							{
+		    								eth_rd_SOCKET_DATA(&ETH,0,&rx_mem_pointer,S0_get_size); // read socket data
+		    								SPI_ETH_WR_REG_16(&ETH,S0_RX_RD0,rx_mem_pointer );		// write rx memory pointer
+		    								eth_wr_SOCKET_CMD(&ETH,0,RECV);							// write command to execute
+		    								while(eth_rd_SOCKET_CMD(&ETH,0))						// wait until end of command execution
+		    								{}
+
+		    								CopiaVector(mb_eth._MBUS_RCVD, ETH.data, S0_get_size, 0, 0 );
+		    								mb_eth._n_MBUS_RCVD=S0_get_size;
+
+		    								if(S0_get_size > 0)	{ ETH.S0_data_available=1;}
+
+		    								if(ModBUS_Check(mb_eth._MBUS_RCVD, mb_eth._n_MBUS_RCVD))		//Ckecks ModBUS type data
+		    									{
+		    										mb_eth._w_answer=0;  									//Si el mensaje recibido ya es modbus digo que ya recibi
+		    										MB_TOUT_ticks=0;
+		    										ModBUS(&mb_eth);										//ModBUS protocol execution
+		    										CopiaVector(ETH.swap, mb_eth._MBUS_RCVD, mb_eth._n_MBUS_RCVD, 0, 0);
+		    										CopiaVector(mb_wf._Holding_Registers, mb_eth._Holding_Registers, 64, 0, 0);
+		    										ETH.S0_data_available=1;	//Informa que se ha recibido un dato y es ModBUS
+		    										if (SYS_ETH_DBG_EN == 1)
+		    										{
+		    											//HAL_UART_Transmit_IT(&huart2,"\r\nMBUS RCVD\r\n",strlen("\r\nMBUS RCVD\r\n"));
+		    											ITM0_Write("\r\n RCVD MBUS REQ \r\n",strlen("\r\n\r\n RCVD MBUS REQ \r\n\r\n"));
+		    										}
+		    									}
+		    									else
+		    										{
+		    										if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\n NO MBUS \r\n",strlen("\r\n\r\n NO MBUS \r\n\r\n"));}
+		    										}
+
+
+		    							}
+		    						}
+		    					}
+		    				 }
+		    			 break;
+		    			 case SOCK_FIN_WAIT :
+		    				 {
+		    					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_FIN_WAIT \r\n",strlen("\r\nS0_SOCK_FIN_WAIT \r\n"));}
+		    					 ETH.ETH_WDG=0;
+		    				 }
+		    			 break;
+		    			 case SOCK_CLOSING :
+		    				 {
+		    					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_CLOSING \r\n",strlen("\r\nS0_SOCK_CLOSING \r\n"));}
+		    					 ETH.ETH_WDG=0;
+		    				 }
+		    			 break;
+		    			 case  SOCK_TIME_WAIT :
+		    				 {
+		    					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_TIME_WAIT \r\n",strlen("\r\nS0_SOCK_TIME_WAIT \r\n"));}
+		    					eth_wr_SOCKET_CMD(&ETH,0, DISCON );
+		    					while( SPI_ETH_REG(&ETH, S0_CR_ADDR_BASEH,S0_CR_ADDR_BASEL ,SPI_READ, spi_Data,1))
+		    					{}
+		    					ETH.ETH_WDG=0;
+		    				 }
+		    			 break;
+		    			 case SOCK_CLOSE_WAIT :
+		    				 {
+		    					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_CLOSE_WAIT \r\n",strlen("\r\nS0_SOCK_CLOSE_WAIT \r\n"));}
+		    					eth_wr_SOCKET_CMD(&ETH,0,DISCON );
+		    					while( SPI_ETH_REG(&ETH, S0_CR_ADDR_BASEH,S0_CR_ADDR_BASEL ,SPI_READ, spi_Data,1))
+		    					{}
+		    					ETH.ETH_WDG=0;
+		    				 }
+		    			 break;
+		    			 case SOCK_LAST_ACK :
+		    				 {
+		    					 if (SYS_ETH_DBG_EN == 1)
+		    					 {
+		    						 ITM0_Write("\r\nS0_SOCK_LAST_ACK \r\n",strlen("\r\nS0_SOCK_LAST_ACK \r\n"));
+		    					 }
+		    					 ETH.ETH_WDG=0;
+		    				 }
+		    			 break;
+		    			 case SOCK_UDP :
+		    				 {
+		    					if (SYS_ETH_DBG_EN == 1){ ITM0_Write("\r\nS0_SOCK_UDP \r\n",strlen("\r\nS0_SOCK_UDP \r\n"));}
+		    					 ETH.ETH_WDG=0;
+		    				 }
+		    			 break;
+		    			 case  SOCK_IPRAW :
+		    				 {
+		    					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_IPRAW \r\n",strlen("\r\nS0_SOCK_IPRAW \r\n"));}
+		    					 ETH.ETH_WDG=0;
+		    				 }
+		    			 break;
+		    			 case  SOCK_MACRAW :
+		    				 {
+		    					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_MACRAW \r\n",strlen("\r\nS0_SOCK_MACRAW \r\n"));}
+		    					 ETH.ETH_WDG=0;
+		    				 }
+		    			 break;
+		    			 case SOCK_PPOE :
+		    				 {
+		    					if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_PPOE \r\n",strlen("\r\nS0_SOCK_PPOE \r\n"));}
+		    					 ETH.ETH_WDG=0;
+		    				 }
+		    			 break;
+
+		    			 default:
+		    				 {
+
+		    				 }
+		    	     }
+		    	  }
+		    	  }else
+		    	  	  {
+		    		 SPI_ETH(&ETH);
+		    	  	  }
+		 CAM_W5100=0;
+	 }
 
 	 if (ESP_restart==1) //WRNNG Hardcoded RESET WIFI
 		{
@@ -662,14 +959,14 @@ int main(void)
 
 	  if(FLAG_UART2_485==1)
 	  {
-		  ITM0_Write("\r\nRX UART2",strlen("\r\nRX UART2"));
+		  /*ITM0_Write("\r\nRX UART2",strlen("\r\nRX UART2"));
 		  dummy3=strlen("PRUEBA DE RECEPCION VIA 485");
 		  if(FT_String_ND(UART2_RX_vect_hld,&UART2_RX_items,"PRUEBA DE RECEPCION VIA 485",&dummy3,wf._uartRCVD_tok,wf._n_tok,&dummy,wf._id_conn,wf._overflowVector,FIND)==1)
 		  {
 			  HAL_GPIO_WritePin(GPIOA, MBUS_CTRL_Pin, GPIO_PIN_SET);	//Habilito 485 para TX
 			  HAL_UART_Transmit(&huart2,"TX VIA RS-485\r\n", 15, 100);
 			  HAL_GPIO_WritePin(GPIOA, MBUS_CTRL_Pin, GPIO_PIN_RESET);	//Habilito 485 para RX
-		  }
+		  }*/
 		  FLAG_UART2_485=0;
 	  }
 
@@ -873,7 +1170,7 @@ static void MX_SPI3_Init(void)
   hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi3.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi3.Init.NSS = SPI_NSS_SOFT;
-  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -1177,8 +1474,8 @@ static void MX_USART6_UART_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -1190,7 +1487,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(Q0_0_GPIO_Port, Q0_0_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, Q0_1_Pin|MBUS_CTRL_Pin|WF_EN_RST_Pin|DBG_PIN_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, Q0_1_Pin|WF_EN_RST_Pin|DBG_PIN_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(MBUS_CTRL_GPIO_Port, MBUS_CTRL_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, FALLA_Pin|CNN_Pin|ALIM_Pin|ETH_NSS_Pin
@@ -1214,7 +1514,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = MBUS_CTRL_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(MBUS_CTRL_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : A3V3_Pin A5V_Pin IA0_Pin IA1_Pin */
@@ -1232,8 +1532,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -1249,9 +1549,7 @@ void SysTick_Handler(void)
 
 	if (mseg==500)
 		{
-		   HAL_GPIO_TogglePin(GPIOB, FALLA_Pin);
-		   HAL_GPIO_TogglePin(GPIOB, CNN_Pin);
-		   HAL_GPIO_TogglePin(GPIOB, ALIM_Pin);
+		   //---------clock ?
 		   mseg=0;
 		}
 
@@ -1281,13 +1579,19 @@ void SysTick_Handler(void)
 		}
 
 	/**********************[ FIN 	- EHTERNET WDG ] **********************/
-   if (ms_ticks==100) //ms_ticks==300
+   if(CAM_W5100==0)
+   {
+	   ms_ticks++;
+
+   }
+   if (ms_ticks>=100) //ms_ticks==300
      {
    	ms_ticks=0;
+   	CAM_W5100=1;
    	min_ticks++;
 
    	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-
+    /*
    	if(spi_no_debug)
    	  {
    	  if(SYS_SPI_ETH_READ_EN==1)
@@ -1299,12 +1603,23 @@ void SysTick_Handler(void)
    	     {
    			 case SOCK_CLOSED :
    				 {
-   					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_CLOSED \r\n",strlen("\r\nS0_SOCK_CLOSED \r\n"));}
+   					 //if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_CLOSED \r\n",strlen("\r\nS0_SOCK_CLOSED \r\n"));}
    					 eth_wr_SOCKET_CMD(&ETH, 0 ,OPEN );
    					 // Si no tengo intento de ARP por 5 segundos vuelvo a inicializar
    					 if(ETH.ETH_WDG>=5000)
    					 {
    						 ETH.ETH_WDG=0;
+   						 //Added to avoid TCP HANG TESTING //Cuando entaba al rebooting se quedaba colgado ahí.Se cierra el puerto y no lo puede volver a abirir.
+   						 // El error aparentemente viene desde el open PLC dado que el ModBUS Poll tb entrega errores de read, timeout, write y transaction
+   						 ITM0_Write("\r\nREBOOTING \r\n",strlen("\r\nREBOOTING \r\n"));
+   						 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, RESET);
+   						 HAL_Delay(250);
+   						 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, SET);
+   						 HAL_Delay(100);
+   						 ITM0_Write("\r\nGOING TO INIT \r\n",strlen("\r\nGOING TO INIT \r\n"));
+   						 //
+
+
    						 eth_init(&ETH);
    						 eth_socket_init(&ETH,0);
    					 }
@@ -1369,7 +1684,7 @@ void SysTick_Handler(void)
    								CopiaVector(mb_eth._MBUS_RCVD, ETH.data, S0_get_size, 0, 0 );
    								mb_eth._n_MBUS_RCVD=S0_get_size;
 
-   								//if(S0_get_size > 0)	{ ETH.S0_data_available=1;}					//Flag data received
+   								if(S0_get_size > 0)	{ ETH.S0_data_available=1;}					//Flag data received
 
    								if(ModBUS_Check(mb_eth._MBUS_RCVD, mb_eth._n_MBUS_RCVD))		//Ckecks ModBUS type data
    								{
@@ -1438,7 +1753,7 @@ void SysTick_Handler(void)
    								CopiaVector(mb_eth._MBUS_RCVD, ETH.data, S0_get_size, 0, 0 );
    								mb_eth._n_MBUS_RCVD=S0_get_size;
 
-   								//if(S0_get_size > 0)	{ ETH.S0_data_available=1;}
+   								if(S0_get_size > 0)	{ ETH.S0_data_available=1;}
 
    								if(ModBUS_Check(mb_eth._MBUS_RCVD, mb_eth._n_MBUS_RCVD))		//Ckecks ModBUS type data
    									{
@@ -1450,7 +1765,7 @@ void SysTick_Handler(void)
    										ETH.S0_data_available=1;	//Informa que se ha recibido un dato y es ModBUS
    										if (SYS_ETH_DBG_EN == 1)
    										{
-   											HAL_UART_Transmit_IT(&huart2,"\r\nMBUS RCVD\r\n",strlen("\r\nMBUS RCVD\r\n"));
+   											//HAL_UART_Transmit_IT(&huart2,"\r\nMBUS RCVD\r\n",strlen("\r\nMBUS RCVD\r\n"));
    											ITM0_Write("\r\n RCVD MBUS REQ \r\n",strlen("\r\n\r\n RCVD MBUS REQ \r\n\r\n"));
    										}
    									}
@@ -1506,7 +1821,7 @@ void SysTick_Handler(void)
    			 break;
    			 case SOCK_UDP :
    				 {
-   					 if (SYS_ETH_DBG_EN == 1){ ITM0_Write("\r\nS0_SOCK_UDP \r\n",strlen("\r\nS0_SOCK_UDP \r\n"));}
+   					if (SYS_ETH_DBG_EN == 1){ ITM0_Write("\r\nS0_SOCK_UDP \r\n",strlen("\r\nS0_SOCK_UDP \r\n"));}
    					 ETH.ETH_WDG=0;
    				 }
    			 break;
@@ -1524,7 +1839,7 @@ void SysTick_Handler(void)
    			 break;
    			 case SOCK_PPOE :
    				 {
-   					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_PPOE \r\n",strlen("\r\nS0_SOCK_PPOE \r\n"));}
+   					if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_PPOE \r\n",strlen("\r\nS0_SOCK_PPOE \r\n"));}
    					 ETH.ETH_WDG=0;
    				 }
    			 break;
@@ -1537,8 +1852,8 @@ void SysTick_Handler(void)
    	  }
    	  }else
    	  	  {
-   		  SPI_ETH(&ETH);
-   	  	  }
+   		 SPI_ETH(&ETH);
+   	  	  }*/
    	  if(min_ticks==2)//if(min_ticks==10)
    		  {
    		  	  min_ticks=0;  /* SETEO CADA 2 min*/
@@ -1601,12 +1916,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *INTSERIE)
 		 {
 			UART_RX_vect[UART_RX_pos]=UART_RX_byte[0];
 			UART_RX_pos++;
-			//if(UART_RX_pos>=1022) UART_RX_pos=1022;
 			if(UART_RX_pos>=4095) UART_RX_pos=4095;
 			HAL_TIM_OC_Start_IT(&htim2, TIM_CHANNEL_1);//HAL_TIM_Base_Start_IT(&htim7);	//Habilito el timer
 			TIM2->CNT=1;
 			EN_UART1_TMR=1;	//Habilito Timeout de software
 			HAL_UART_Receive_IT(INTSERIE,(uint8_t *)UART_RX_byte,1);
+
 		 }
 // MBUS USART2 TIMER3
 	if(INTSERIE->Instance==USART2)
@@ -1618,13 +1933,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *INTSERIE)
 			TIM3->CNT=1;
 			EN_UART2_TMR=1;	//Habilito Timeout de software
 			HAL_UART_Receive_IT(INTSERIE,(uint8_t *)UART2_RX_byte,1);
+
 		 }
 // LoRa/debgg USART6 TIMER3
 	if(INTSERIE->Instance==USART6)
 		 {
 			UART6_RX_vect[UART6_RX_pos]=UART6_RX_byte[0];
 			UART6_RX_pos++;
-			//if(UART6_RX_pos>=512) UART6_RX_pos=512;
 			if(UART6_RX_pos>=4095) UART6_RX_pos=4095;
 			HAL_TIM_OC_Start_IT(&htim4, TIM_CHANNEL_1);//HAL_TIM_Base_Start_IT(&htim7);	//Habilito el timer
 			TIM4->CNT=1;
@@ -1632,6 +1947,31 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *INTSERIE)
 			HAL_UART_Receive_IT(INTSERIE,(uint8_t *)UART6_RX_byte,1);
 		 }
  }
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *INTSERIE)
+{
+	if(INTSERIE->Instance==USART6)
+			 {
+				SYS_UART_DEBUG_BUSY=0;
+			 }
+	if(INTSERIE->Instance==USART2)
+			 {
+				SYS_UART_MBUS_DEBUG_BUSY=0;
+			 }
+}
+
+void UART_DEBUG_VIA_MBUS(char vect, int A)
+{
+	 if((SYS_UART_MBUS_DEBUG_BUSY==0)&&(SYS_UART_MBUS_DEBUG==WIFI))
+		{
+		 	SYS_UART_MBUS_DEBUG_BUSY=1;
+		    HAL_GPIO_WritePin(GPIOA, MBUS_CTRL_Pin, GPIO_PIN_SET);
+		    HAL_Delay(50);
+			HAL_UART_Transmit_IT(&huart2,vect,A);
+			HAL_Delay(50);
+			HAL_GPIO_WritePin(GPIOA, MBUS_CTRL_Pin, GPIO_PIN_RESET);
+		}
+}
 
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *TIMER)
 {
@@ -1645,7 +1985,29 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *TIMER)
 				 UART_RX_pos=0;
 				 UART_RX_vect[4095]='\0';//UART_RX_vect[1022]='\0'; //Finalizo el vector a la fuerza ya que recibo hasta 124
 				 CopiaVector(UART_RX_vect_hld,UART_RX_vect,UART_RX_items,1,CMP_VECT);
-				 if(SYS_WIFI_UART_PASSTHROUGH==1) HAL_UART_Transmit_IT(&huart6, UART_RX_vect_hld, UART_RX_items);	//Reenvío la info a traves de UART6 solo si esta habilitado
+
+				 if((SYS_UART_DEBUG_BUSY==0)&&(SYS_UART_DEBUG==WIFI))
+					{
+						SYS_UART_DEBUG_BUSY=1;
+						HAL_UART_Transmit_IT(&huart6,UART_RX_vect_hld,UART_RX_items);
+					}
+				 ITM0_Write("\r\nINT TIM2-2 \r\n",strlen("\r\nINT TIM2-2 \r\n"));
+
+
+				 if((SYS_UART_MBUS_DEBUG_BUSY==0)&&(SYS_UART_MBUS_DEBUG==WIFI))
+					{
+					 	SYS_UART_MBUS_DEBUG_BUSY=1;
+					    HAL_GPIO_WritePin(GPIOA, MBUS_CTRL_Pin, GPIO_PIN_SET);
+					    //HAL_Delay(5);
+						HAL_UART_Transmit_IT(&huart2,UART_RX_vect_hld,UART_RX_items);
+						//HAL_Delay(5);
+						//HAL_GPIO_WritePin(GPIOA, MBUS_CTRL_Pin, GPIO_PIN_RESET);
+					}
+
+				 ITM0_Write("\r\nINT TIM2-3 \r\n",strlen("\r\nINT TIM2-3 \r\n"));
+
+				 //UART_DEBUG_VIA_MBUS(UART_RX_vect_hld,UART_RX_items);
+
 				 HAL_UART_Receive_IT(&huart1,(uint8_t *)UART_RX_byte,1); //Habilito le recepcón de puerto serie al terminar
 				 if (wf._DBG_EN==1)
 				 {
@@ -1653,6 +2015,8 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *TIMER)
 					 ITM0_Write((uint8_t *)UART_RX_vect_hld,UART_RX_items);
 					 ITM0_Write("\r\n",strlen("\r\n"));
 				 }
+
+				 ITM0_Write("\r\nINT TIM2-4 \r\n",strlen("\r\nINT TIM2-4 \r\n"));
 		}
 // MBUS USART2 TIMER3
 		if(TIMER->Instance==TIM3)
@@ -1676,7 +2040,8 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *TIMER)
 
 // LoRa/Debbg USART6 TIMER3
 		if(TIMER->Instance==TIM4)
-			{
+			{	 ITM0_Write("\r\nINT TIM4 \r\n",strlen("\r\nINT TIM4 \r\n"));
+
 				 HAL_TIM_OC_Stop_IT(TIMER, TIM_CHANNEL_1); //Paro el timer
 				 HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
 				 FLAG_UART6=1;
@@ -1685,7 +2050,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *TIMER)
 				 UART6_RX_pos=0;
 				 UART6_RX_vect[4095]='\0'; //UART6_RX_vect[512]='\0'; //Finalizo el vector a la fuerza ya que recibo hasta 124
 				 CopiaVector(UART6_RX_vect_hld,UART6_RX_vect,UART6_RX_items,1,CMP_VECT);
-				 if(SYS_WIFI_UART_PASSTHROUGH==1) HAL_UART_Transmit_IT(&huart1, UART6_RX_vect_hld, UART6_RX_items);	//Reenvío la info a traves de UART1 solo si esta habilitado
+
 				 HAL_UART_Receive_IT(&huart6,(uint8_t *)UART6_RX_byte,1); //Habilito le recepcón de puerto serie al terminar
 				 if (wf._DBG_EN==1)
 				 {
