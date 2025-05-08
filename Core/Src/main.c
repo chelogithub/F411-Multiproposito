@@ -1916,7 +1916,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *INTSERIE)
 		 {
 			UART_RX_vect[UART_RX_pos]=UART_RX_byte[0];
 			UART_RX_pos++;
-			if(UART_RX_pos>=4095) UART_RX_pos=4095;
+			if(UART_RX_pos>=4094) UART_RX_pos=4094;
 			HAL_TIM_OC_Start_IT(&htim2, TIM_CHANNEL_1);//HAL_TIM_Base_Start_IT(&htim7);	//Habilito el timer
 			TIM2->CNT=1;
 			EN_UART1_TMR=1;	//Habilito Timeout de software
@@ -1928,7 +1928,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *INTSERIE)
 		 {
 			UART2_RX_vect[UART2_RX_pos]=UART2_RX_byte[0];
 			UART2_RX_pos++;
-			if(UART2_RX_pos>=512) UART2_RX_pos=512;
+			if(UART2_RX_pos>=511) UART2_RX_pos=511;
 			HAL_TIM_OC_Start_IT(&htim3, TIM_CHANNEL_1);//HAL_TIM_Base_Start_IT(&htim7);	//Habilito el timer
 			TIM3->CNT=1;
 			EN_UART2_TMR=1;	//Habilito Timeout de software
@@ -1940,7 +1940,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *INTSERIE)
 		 {
 			UART6_RX_vect[UART6_RX_pos]=UART6_RX_byte[0];
 			UART6_RX_pos++;
-			if(UART6_RX_pos>=4095) UART6_RX_pos=4095;
+			if(UART6_RX_pos>=4094) UART6_RX_pos=4094;
 			HAL_TIM_OC_Start_IT(&htim4, TIM_CHANNEL_1);//HAL_TIM_Base_Start_IT(&htim7);	//Habilito el timer
 			TIM4->CNT=1;
 			EN_UART6_TMR=1;	//Habilito Timeout de software
@@ -2027,7 +2027,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *TIMER)
 				 EN_UART2_TMR=0;
 				 UART2_RX_items=UART2_RX_pos;
 				 UART2_RX_pos=0;
-				 UART2_RX_vect[512]='\0'; //Finalizo el vector a la fuerza ya que recibo hasta 124
+				 UART2_RX_vect[511]='\0'; //Finalizo el vector a la fuerza ya que recibo hasta 124
 				 CopiaVector(UART2_RX_vect_hld,UART2_RX_vect,UART2_RX_items,1,CMP_VECT);
 				 HAL_UART_Receive_IT(&huart2,(uint8_t *)UART2_RX_byte,1); //Habilito le recepcón de puerto serie al terminar
 				 if (wf._DBG_EN==1)
