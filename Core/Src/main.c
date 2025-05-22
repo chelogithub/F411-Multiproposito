@@ -120,7 +120,7 @@ uint8_t CAM_W5100=0,
 		SYS_UART_DEBUG_BUSY=0,
 
 		SYS_SPI_ETH_READ_EN=0,
-		SYS_ETH_DBG_EN=1,
+		SYS_ETH_DBG_EN=0,
 		SYS_saveConfigData=0,
 		TXSPI[4],
 		RXSPI[4],
@@ -263,7 +263,7 @@ int main(void)
 		 * UID[1]=Nro de Lote
 		 * Por probabilidad vamos a tomar como UID a visualizar como AP los primeros 32 bits
 		 */
-			wf._DBG_EN=1;		//NO TRAJE EL CABLE LO HAGO POR ITM
+			wf._DBG_EN=0;		//NO TRAJE EL CABLE LO HAGO POR ITM
 
 			UID[0] = *(__IO uint32_t *)(UID_BASE_ADDRESS);
 			UID[1] = *(__IO uint32_t *)(UID_BASE_ADDRESS + 4U);
@@ -561,7 +561,7 @@ int main(void)
 	wf._estado_conexion=100;//Si no se define no arranca	//wf._estado_conexion=1;					//Arranco en WiFi Desconectado
 	wf._automatizacion=WF_CONNECT_TCP;//wf._automatizacion=WF_SEND;//
 	wf._NO_IP=1;
-	wf._DBG_EN=1;
+	wf._DBG_EN=0;
 
 
   if(ESP8266_HW_Init(&huart1)==1)
@@ -612,7 +612,7 @@ int main(void)
 		    	  {
 		    	  if(SYS_SPI_ETH_READ_EN==1)
 		    	  {
-		    		 HAL_GPIO_TogglePin(GPIOA, DBG_PIN_Pin);
+
 		    	     ETH.S0_status=eth_rd_SOCKET_STAT(&ETH,0);
 
 		    		  switch(ETH.S0_status)	//Check Socket status
@@ -694,8 +694,9 @@ int main(void)
 		    								eth_rd_SOCKET_DATA(&ETH,0,&rx_mem_pointer,S0_get_size); // read socket data
 		    								SPI_ETH_WR_REG_16(&ETH,S0_RX_RD0,rx_mem_pointer );		// write rx memory pointer
 		    								eth_wr_SOCKET_CMD(&ETH,0,RECV);							// write command to execute
-		    								while(eth_rd_SOCKET_CMD(&ETH,0))						// wait until end of command execution
-		    								{}
+		    								eth_rd_SOCKET_CMD(&ETH,0);
+		    								//while(eth_rd_SOCKET_CMD(&ETH,0))						// wait until end of command execution
+		    								//{}
 
 		    								CopiaVector(mb_eth._MBUS_RCVD, ETH.data, S0_get_size, 0, 0 );
 		    								mb_eth._n_MBUS_RCVD=S0_get_size;
@@ -717,8 +718,9 @@ int main(void)
 		    								eth_wr_SOCKET_DATA(&ETH,0, &tx_mem_pointer, send_size);	// write socket data
 		    								SPI_ETH_WR_REG_16(&ETH,0x424,tx_mem_pointer);			// write tx memory pointer
 		    								eth_wr_SOCKET_CMD(&ETH,0,SEND);							// write command to execute
-		    								while(eth_rd_SOCKET_CMD(&ETH,0))						// wait until end of command execution
-		    								{}
+		    								eth_rd_SOCKET_CMD(&ETH,0);
+		    								//while(eth_rd_SOCKET_CMD(&ETH,0))						// wait until end of command execution
+		    								//{}
 
 		    							}
 		    					}
@@ -749,8 +751,9 @@ int main(void)
 		    							eth_wr_SOCKET_DATA(&ETH,0, &tx_mem_pointer, send_size);	// write socket data
 		    							SPI_ETH_WR_REG_16(&ETH,0x424,tx_mem_pointer);			// write tx memory pointer
 		    							eth_wr_SOCKET_CMD(&ETH,0,SEND);							// write command to execute
-		    							while(eth_rd_SOCKET_CMD(&ETH,0))						// wait until end of command execution
-		    							{}
+		    							eth_rd_SOCKET_CMD(&ETH,0);
+		    							//while(eth_rd_SOCKET_CMD(&ETH,0))						// wait until end of command execution
+		    							//{}
 		    							mb_eth._w_answer=1;	// Waiting answer flag
 		    							MB_TOUT_ticks=0;	// restart counting
 		    							if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\n SENT MBUS REQ \r\n",strlen("\r\n\r\n SENT MBUS REQ \r\n\r\n"));}
@@ -763,8 +766,9 @@ int main(void)
 		    								eth_rd_SOCKET_DATA(&ETH,0,&rx_mem_pointer,S0_get_size); // read socket data
 		    								SPI_ETH_WR_REG_16(&ETH,S0_RX_RD0,rx_mem_pointer );		// write rx memory pointer
 		    								eth_wr_SOCKET_CMD(&ETH,0,RECV);							// write command to execute
-		    								while(eth_rd_SOCKET_CMD(&ETH,0))						// wait until end of command execution
-		    								{}
+		    								eth_rd_SOCKET_CMD(&ETH,0);
+		    								//while(eth_rd_SOCKET_CMD(&ETH,0))						// wait until end of command execution
+		    								//{}
 
 		    								CopiaVector(mb_eth._MBUS_RCVD, ETH.data, S0_get_size, 0, 0 );
 		    								mb_eth._n_MBUS_RCVD=S0_get_size;
@@ -812,8 +816,9 @@ int main(void)
 		    				 {
 		    					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_TIME_WAIT \r\n",strlen("\r\nS0_SOCK_TIME_WAIT \r\n"));}
 		    					eth_wr_SOCKET_CMD(&ETH,0, DISCON );
-		    					while( SPI_ETH_REG(&ETH, S0_CR_ADDR_BASEH,S0_CR_ADDR_BASEL ,SPI_READ, spi_Data,1))
-		    					{}
+		    					SPI_ETH_REG(&ETH, S0_CR_ADDR_BASEH,S0_CR_ADDR_BASEL ,SPI_READ, spi_Data,1);
+		    					//while( SPI_ETH_REG(&ETH, S0_CR_ADDR_BASEH,S0_CR_ADDR_BASEL ,SPI_READ, spi_Data,1))
+		    					//{}
 		    					ETH.ETH_WDG=0;
 		    				 }
 		    			 break;
@@ -821,8 +826,9 @@ int main(void)
 		    				 {
 		    					 if (SYS_ETH_DBG_EN == 1) {ITM0_Write("\r\nS0_SOCK_CLOSE_WAIT \r\n",strlen("\r\nS0_SOCK_CLOSE_WAIT \r\n"));}
 		    					eth_wr_SOCKET_CMD(&ETH,0,DISCON );
-		    					while( SPI_ETH_REG(&ETH, S0_CR_ADDR_BASEH,S0_CR_ADDR_BASEL ,SPI_READ, spi_Data,1))
-		    					{}
+		    					SPI_ETH_REG(&ETH, S0_CR_ADDR_BASEH,S0_CR_ADDR_BASEL ,SPI_READ, spi_Data,1);
+		    					//while( SPI_ETH_REG(&ETH, S0_CR_ADDR_BASEH,S0_CR_ADDR_BASEL ,SPI_READ, spi_Data,1))
+		    					//{}
 		    					ETH.ETH_WDG=0;
 		    				 }
 		    			 break;
@@ -865,6 +871,7 @@ int main(void)
 
 		    				 }
 		    	     }
+
 		    	  }
 		    	  }else
 		    	  	  {
@@ -882,7 +889,8 @@ int main(void)
 	 if (ESP_HW_Init==1) //Si el módulo se inició correctamente
 		{
 			if((WF_SND_FLAG==1)&&(wf._TCP_Local_Server_EN==0)&&(wf._estado_conexion>=609)&&(ETH.S0_data_available))
-			{	ETH.S0_data_available=0;
+			{	HAL_GPIO_WritePin(GPIOC, Q0_0_Pin,RESET);
+				ETH.S0_data_available=0;
 				wf_snd_flag_ticks=0;
 				WF_SND_FLAG=0;
 				if( httpPOST(	EP_DATA, NVS._SERVER,NVS._WIFI_PORT,
@@ -906,6 +914,7 @@ int main(void)
 								wf._estado_conexion=TCP_SND_EN_CURSO;
 							}
 				}
+				HAL_GPIO_WritePin(GPIOC, Q0_0_Pin,SET);
 			}
 		}
 
@@ -917,21 +926,26 @@ int main(void)
 			  }
 			if(FLAG_UART1_WF==1)
 				{
+					HAL_GPIO_WritePin(GPIOA, Q0_1_Pin,RESET);
 					CopiaVector(wf._uartRCVD,UART_RX_vect_hld,UART_RX_items,1,CMP_VECT);
 					FLAG_UART1_WF=0;
+					HAL_GPIO_WritePin(GPIOA, Q0_1_Pin,SET);
+
 				}
 
 			  ITM0_Write("\r\nRX UART1",strlen("\r\nRX UART1"));
 
 			  if (ESP_HW_Init==1) //Si el módulo se inició correctamente
-				{
+				{	HAL_GPIO_WritePin(GPIOB, ALIM_Pin,RESET);
 					  /*************** Copio y proceso info recibida ***************/
+				  	  ITM0_Write("\r\nAT_ESP8266_ND-IN\r\n",strlen("\r\nAT_ESP8266_ND-IN\r\n"));
 					  wf._n_orig=UART_RX_items;
 					  CopiaVector(wf._uartRCVD,UART_RX_vect_hld,UART_RX_items,1,CMP_VECT);
 					  ESP_conn=AT_ESP8266_ND(&wf);
-
+					  ITM0_Write("\r\nAT_ESP8266_ND-OUT\r\n",strlen("\r\nAT_ESP8266_ND-OUT\r\n"));
 					/*************** Si recibo datos y estan correctos me fijo que son ***************/
-
+					 HAL_GPIO_WritePin(GPIOB, ALIM_Pin,SET);
+					 HAL_GPIO_WritePin(GPIOB, CNN_Pin,RESET);
 					if ((wf._new_data_rcv==1)&&(wf._estado_rcv_data==99))
 					{
 
@@ -948,13 +962,16 @@ int main(void)
 						{
 							// DATA ERRONEA NO SE PROCESA
 						}
+					HAL_GPIO_WritePin(GPIOB, CNN_Pin,SET);
 				}
 
 			  FLAG_UART1_WF=0;
 		  }
 	  if (ESP_HW_Init==1) //Si el módulo se inició correctamente
 		{
+		    HAL_GPIO_WritePin(GPIOB, FALLA_Pin,RESET);
 			ESP_conn=WiFi_Conn_ND(&wf,&huart1,1);	//Tiene que ir en el main el chequeo es constante
+			HAL_GPIO_WritePin(GPIOB, FALLA_Pin,SET);
 		}
 
 	  if(FLAG_UART2_485==1)
@@ -1500,15 +1517,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = Q0_0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(Q0_0_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : Q0_1_Pin WF_EN_RST_Pin DBG_PIN_Pin */
-  GPIO_InitStruct.Pin = Q0_1_Pin|WF_EN_RST_Pin|DBG_PIN_Pin;
+  /*Configure GPIO pin : Q0_1_Pin */
+  GPIO_InitStruct.Pin = Q0_1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(Q0_1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : MBUS_CTRL_Pin */
   GPIO_InitStruct.Pin = MBUS_CTRL_Pin;
@@ -1523,10 +1540,22 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : FALLA_Pin CNN_Pin ALIM_Pin ETH_NSS_Pin
-                           ETH_RST_Pin LR_RST_Pin */
-  GPIO_InitStruct.Pin = FALLA_Pin|CNN_Pin|ALIM_Pin|ETH_NSS_Pin
-                          |ETH_RST_Pin|LR_RST_Pin;
+  /*Configure GPIO pins : FALLA_Pin CNN_Pin ALIM_Pin */
+  GPIO_InitStruct.Pin = FALLA_Pin|CNN_Pin|ALIM_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : WF_EN_RST_Pin DBG_PIN_Pin */
+  GPIO_InitStruct.Pin = WF_EN_RST_Pin|DBG_PIN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : ETH_NSS_Pin ETH_RST_Pin LR_RST_Pin */
+  GPIO_InitStruct.Pin = ETH_NSS_Pin|ETH_RST_Pin|LR_RST_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1590,7 +1619,7 @@ void SysTick_Handler(void)
    	CAM_W5100=1;
    	min_ticks++;
 
-   	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+   	//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
     /*
    	if(spi_no_debug)
    	  {
@@ -1916,7 +1945,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *INTSERIE)
 		 {
 			UART_RX_vect[UART_RX_pos]=UART_RX_byte[0];
 			UART_RX_pos++;
-			if(UART_RX_pos>=4094) UART_RX_pos=4094;
+			if(UART_RX_pos>=1536) UART_RX_pos=1536; //250519 if(UART_RX_pos>=4092) UART_RX_pos=4092;
 			HAL_TIM_OC_Start_IT(&htim2, TIM_CHANNEL_1);//HAL_TIM_Base_Start_IT(&htim7);	//Habilito el timer
 			TIM2->CNT=1;
 			EN_UART1_TMR=1;	//Habilito Timeout de software
@@ -1928,7 +1957,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *INTSERIE)
 		 {
 			UART2_RX_vect[UART2_RX_pos]=UART2_RX_byte[0];
 			UART2_RX_pos++;
-			if(UART2_RX_pos>=511) UART2_RX_pos=511;
+			if(UART2_RX_pos>=510) UART2_RX_pos=510;
 			HAL_TIM_OC_Start_IT(&htim3, TIM_CHANNEL_1);//HAL_TIM_Base_Start_IT(&htim7);	//Habilito el timer
 			TIM3->CNT=1;
 			EN_UART2_TMR=1;	//Habilito Timeout de software
@@ -1940,7 +1969,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *INTSERIE)
 		 {
 			UART6_RX_vect[UART6_RX_pos]=UART6_RX_byte[0];
 			UART6_RX_pos++;
-			if(UART6_RX_pos>=4094) UART6_RX_pos=4094;
+			if(UART6_RX_pos>=4092) UART6_RX_pos=4092;
 			HAL_TIM_OC_Start_IT(&htim4, TIM_CHANNEL_1);//HAL_TIM_Base_Start_IT(&htim7);	//Habilito el timer
 			TIM4->CNT=1;
 			EN_UART6_TMR=1;	//Habilito Timeout de software
@@ -1978,12 +2007,13 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *TIMER)
 // WiFi	USART 1 TIMER2
 		if(TIMER->Instance==TIM2)
 			{
+				 ITM0_Write("\r\nINT TIM2-0 \r\n",strlen("\r\nINT TIM2-0 \r\n"));
 				 HAL_TIM_OC_Stop_IT(TIMER, TIM_CHANNEL_1); //Paro el timer
 				 FLAG_UART1_WF=1;
 				 EN_UART1_TMR=0;
 				 UART_RX_items=UART_RX_pos;
 				 UART_RX_pos=0;
-				 UART_RX_vect[4095]='\0';//UART_RX_vect[1022]='\0'; //Finalizo el vector a la fuerza ya que recibo hasta 124
+				 UART_RX_vect[1536]='\0';//UART_RX_vect[1022]='\0'; //Finalizo el vector a la fuerza ya que recibo hasta 124
 				 CopiaVector(UART_RX_vect_hld,UART_RX_vect,UART_RX_items,1,CMP_VECT);
 
 				 if((SYS_UART_DEBUG_BUSY==0)&&(SYS_UART_DEBUG==WIFI))

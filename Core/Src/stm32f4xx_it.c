@@ -94,8 +94,8 @@ void HardFault_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
-	  HAL_GPIO_TogglePin(GPIOB, ALIM_Pin);
-	  HAL_Delay(250);
+	 // HAL_GPIO_TogglePin(GPIOB, ALIM_Pin);
+	 // HAL_Delay(250);
     /* USER CODE END W1_HardFault_IRQn 0 */
   }
 }
@@ -111,8 +111,8 @@ void MemManage_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_MemoryManagement_IRQn 0 */
-	  HAL_GPIO_TogglePin(GPIOB, CNN_Pin);
-	  HAL_Delay(250);
+	  //HAL_GPIO_TogglePin(GPIOB, CNN_Pin);
+	  //HAL_Delay(250);
     /* USER CODE END W1_MemoryManagement_IRQn 0 */
   }
 }
@@ -128,8 +128,8 @@ void BusFault_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_BusFault_IRQn 0 */
-	  HAL_GPIO_TogglePin(GPIOB, FALLA_Pin);
-	  HAL_Delay(250);
+	  //HAL_GPIO_TogglePin(GPIOB, FALLA_Pin);
+	  //HAL_Delay(250);
     /* USER CODE END W1_BusFault_IRQn 0 */
   }
 }
@@ -145,8 +145,8 @@ void UsageFault_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_UsageFault_IRQn 0 */
-	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
-	  HAL_Delay(250);
+	  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
+	  //HAL_Delay(250);
     /* USER CODE END W1_UsageFault_IRQn 0 */
   }
 }
